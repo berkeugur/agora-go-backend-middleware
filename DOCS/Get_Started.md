@@ -1,7 +1,6 @@
 # Get Started with the Agora Middleware Service
 
-The Agora Middleware Service is a Go-based backend solution that simplifies integrating Agora's cloud services into your applications. It provides a set of RESTful APIs for token generation, cloud recording management, and real-time transcription. 
-The Agora Middleware Service serves two primary purposes:
+The Agora Middleware Service is a Go-based backend solution that simplifies integrating Agora's cloud services into your applications. It provides a set of RESTful APIs for token generation, cloud recording management, and real-time transcription. The Agora Middleware Service serves two primary purposes:
 
 1. For front-end developers: It provides a ready-to-use backend that handles Agora API interactions, allowing you to focus on building your application's user interface and features.
 
@@ -16,11 +15,10 @@ Key features of the middleware service include:
 - Configurable storage options for recordings and transcriptions
 - Easy-to-use RESTful API endpoints
 
-Let's dive into setting up and using this powerful tool!
+Let's dive into setting up and using this server.
 
 ## Table of Contents
 
-1. [Prerequisites](#prerequisites)
 1. [Installation](#installation)
 1. [Configuration](#configuration)
 1. [Running the Service](#running-the-service)
