@@ -55,9 +55,14 @@ func (sr *ServerResponse) UnmarshalFileList() (interface{}, error) {
 	}
 	switch *sr.FileListMode {
 	case "string":
-		// Parse the file list as a slice of FileDetail structures.
+		// fileList is returned as a JSON-encoded string containing an array of file details.
+		// First unmarshal to a plain string and then decode the underlying JSON payload.
+		var rawString string
+		if err := json.Unmarshal(*sr.FileList, &rawString); err != nil {
+			return nil, fmt.Errorf("error parsing FileList into string: %v", err)
+		}
 		var fileList []FileDetail
-		if err := json.Unmarshal(*sr.FileList, &fileList); err != nil {
+		if err := json.Unmarshal([]byte(rawString), &fileList); err != nil {
 			return nil, fmt.Errorf("error parsing FileList into []FileDetail: %v", err)
 		}
 		return fileList, nil
