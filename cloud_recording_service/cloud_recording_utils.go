@@ -65,12 +65,16 @@ func (sr *ServerResponse) UnmarshalFileList() (interface{}, error) {
 		trimmed := strings.TrimSpace(rawString)
 		var fileList []FileDetail
 		if err := json.Unmarshal([]byte(trimmed), &fileList); err != nil {
-			candidate, ok := extractJSONArray(trimmed)
-			if !ok {
+			// Some responses append diagnostic text after the JSON payload. Attempt to
+			// recover by extracting the portion between the first '[' and the last ']'.
+			start := strings.Index(trimmed, "[")
+			end := strings.LastIndex(trimmed, "]")
+			if start == -1 || end == -1 || end <= start {
 				return nil, fmt.Errorf("error parsing FileList into []FileDetail: %v", err)
 			}
+			candidate := trimmed[start : end+1]
 			if err2 := json.Unmarshal([]byte(candidate), &fileList); err2 != nil {
-				return nil, fmt.Errorf("error parsing FileList into []FileDetail: %v", err2)
+				return nil, fmt.Errorf("error parsing FileList into []FileDetail: %v", err)
 			}
 		}
 		return fileList, nil
