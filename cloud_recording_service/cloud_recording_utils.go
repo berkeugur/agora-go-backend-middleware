@@ -90,3 +90,46 @@ func (sr *ServerResponse) UnmarshalFileList() (interface{}, error) {
 		return nil, fmt.Errorf("unknown FileListMode: %s", *sr.FileListMode)
 	}
 }
+
+func extractJSONArray(input string) (string, bool) {
+	start := strings.Index(input, "[")
+	if start == -1 {
+		return "", false
+	}
+
+	depth := 0
+	inString := false
+	escaped := false
+
+	for i := start; i < len(input); i++ {
+		ch := input[i]
+
+		if inString {
+			if escaped {
+				escaped = false
+				continue
+			}
+			switch ch {
+			case '\\':
+				escaped = true
+			case '"':
+				inString = false
+			}
+			continue
+		}
+
+		switch ch {
+		case '"':
+			inString = true
+		case '[':
+			depth++
+		case ']':
+			depth--
+			if depth == 0 {
+				return input[start : i+1], true
+			}
+		}
+	}
+
+	return "", false
+}

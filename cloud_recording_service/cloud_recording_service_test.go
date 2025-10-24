@@ -266,3 +266,36 @@ func TestServerResponseUnmarshalFileListStringModeWithTrailingData(t *testing.T)
 		t.Errorf("expected filename 'test.mp4', got %s", fileList[0].Filename)
 	}
 }
+
+func TestServerResponseUnmarshalFileListStringModeWithPrefix(t *testing.T) {
+	mode := "string"
+	rawString := `downloadFileList: [{"filename":"test.mp4","sliceStartTime":1700000000}] downloadFilePath: /tmp`
+	fileListBytes, err := json.Marshal(rawString)
+	if err != nil {
+		t.Fatalf("failed to marshal file list string: %v", err)
+	}
+	raw := json.RawMessage(fileListBytes)
+
+	sr := ServerResponse{
+		FileListMode: &mode,
+		FileList:     &raw,
+	}
+
+	result, err := sr.UnmarshalFileList()
+	if err != nil {
+		t.Fatalf("UnmarshalFileList returned error: %v", err)
+	}
+
+	fileList, ok := result.([]FileDetail)
+	if !ok {
+		t.Fatalf("expected []FileDetail, got %T", result)
+	}
+
+	if len(fileList) != 1 {
+		t.Fatalf("expected 1 file detail, got %d", len(fileList))
+	}
+
+	if fileList[0].Filename != "test.mp4" {
+		t.Errorf("expected filename 'test.mp4', got %s", fileList[0].Filename)
+	}
+}
