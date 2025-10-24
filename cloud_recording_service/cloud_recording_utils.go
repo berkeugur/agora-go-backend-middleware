@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // generateUID generates a unique user identifier for use within cloud recording sessions.
@@ -66,16 +67,20 @@ func (sr *ServerResponse) UnmarshalFileList() (interface{}, error) {
 		var fileList []FileDetail
 		if err := json.Unmarshal([]byte(trimmed), &fileList); err != nil {
 			// Some responses append diagnostic text after the JSON payload. Attempt to
-			// recover by extracting the portion between the first '[' and the last ']'.
-			start := strings.Index(trimmed, "[")
-			end := strings.LastIndex(trimmed, "]")
-			if start == -1 || end == -1 || end <= start {
-				return nil, fmt.Errorf("error parsing FileList into []FileDetail: %v", err)
+			// recover by extracting the JSON array from the payload.
+			if candidate, ok := extractJSONArray(trimmed); ok {
+				if err2 := json.Unmarshal([]byte(candidate), &fileList); err2 == nil {
+					return fileList, nil
+				}
 			}
-			candidate := trimmed[start : end+1]
-			if err2 := json.Unmarshal([]byte(candidate), &fileList); err2 != nil {
-				return nil, fmt.Errorf("error parsing FileList into []FileDetail: %v", err)
+
+			// If no JSON array could be located, interpret certain literals (e.g. "false")
+			// as an empty file list to gracefully handle Agora's non-array responses.
+			if looksLikeFalseLiteral(trimmed) {
+				return []FileDetail{}, nil
 			}
+
+			return nil, fmt.Errorf("error parsing FileList into []FileDetail: %v", err)
 		}
 		return fileList, nil
 	case "json":
@@ -132,4 +137,30 @@ func extractJSONArray(input string) (string, bool) {
 	}
 
 	return "", false
+}
+
+func looksLikeFalseLiteral(input string) bool {
+	lettersOnly := make([]rune, 0, len(input))
+	for _, r := range input {
+		if unicode.IsLetter(r) {
+			lettersOnly = append(lettersOnly, unicode.ToLower(r))
+			continue
+		}
+
+		if unicode.IsDigit(r) {
+			// Treat digits embedded in the literal (e.g. "f8lse") as noise by skipping them.
+			continue
+		}
+	}
+
+	normalized := string(lettersOnly)
+	if normalized == "false" {
+		return true
+	}
+
+	if len(normalized) == 4 && strings.HasPrefix(normalized, "f") && strings.HasSuffix(normalized, "lse") {
+		return true
+	}
+
+	return false
 }

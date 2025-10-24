@@ -299,3 +299,61 @@ func TestServerResponseUnmarshalFileListStringModeWithPrefix(t *testing.T) {
 		t.Errorf("expected filename 'test.mp4', got %s", fileList[0].Filename)
 	}
 }
+
+func TestServerResponseUnmarshalFileListStringModeFalseLiteral(t *testing.T) {
+	mode := "string"
+	rawString := `false`
+	fileListBytes, err := json.Marshal(rawString)
+	if err != nil {
+		t.Fatalf("failed to marshal file list string: %v", err)
+	}
+	raw := json.RawMessage(fileListBytes)
+
+	sr := ServerResponse{
+		FileListMode: &mode,
+		FileList:     &raw,
+	}
+
+	result, err := sr.UnmarshalFileList()
+	if err != nil {
+		t.Fatalf("UnmarshalFileList returned error: %v", err)
+	}
+
+	fileList, ok := result.([]FileDetail)
+	if !ok {
+		t.Fatalf("expected []FileDetail, got %T", result)
+	}
+
+	if len(fileList) != 0 {
+		t.Fatalf("expected empty file list, got %d entries", len(fileList))
+	}
+}
+
+func TestServerResponseUnmarshalFileListStringModeFalseLiteralWithNoise(t *testing.T) {
+	mode := "string"
+	rawString := `f8lse`
+	fileListBytes, err := json.Marshal(rawString)
+	if err != nil {
+		t.Fatalf("failed to marshal file list string: %v", err)
+	}
+	raw := json.RawMessage(fileListBytes)
+
+	sr := ServerResponse{
+		FileListMode: &mode,
+		FileList:     &raw,
+	}
+
+	result, err := sr.UnmarshalFileList()
+	if err != nil {
+		t.Fatalf("UnmarshalFileList returned error: %v", err)
+	}
+
+	fileList, ok := result.([]FileDetail)
+	if !ok {
+		t.Fatalf("expected []FileDetail, got %T", result)
+	}
+
+	if len(fileList) != 0 {
+		t.Fatalf("expected empty file list, got %d entries", len(fileList))
+	}
+}
