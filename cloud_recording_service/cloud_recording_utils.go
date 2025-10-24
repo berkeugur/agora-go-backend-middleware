@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -55,10 +56,22 @@ func (sr *ServerResponse) UnmarshalFileList() (interface{}, error) {
 	}
 	switch *sr.FileListMode {
 	case "string":
-		// Parse the file list as a slice of FileDetail structures.
+		// fileList is returned as a JSON-encoded string containing an array of file details.
+		// First unmarshal to a plain string and then decode the underlying JSON payload.
+		var rawString string
+		if err := json.Unmarshal(*sr.FileList, &rawString); err != nil {
+			return nil, fmt.Errorf("error parsing FileList into string: %v", err)
+		}
+		trimmed := strings.TrimSpace(rawString)
 		var fileList []FileDetail
-		if err := json.Unmarshal(*sr.FileList, &fileList); err != nil {
-			return nil, fmt.Errorf("error parsing FileList into []FileDetail: %v", err)
+		if err := json.Unmarshal([]byte(trimmed), &fileList); err != nil {
+			candidate, ok := extractJSONArray(trimmed)
+			if !ok {
+				return nil, fmt.Errorf("error parsing FileList into []FileDetail: %v", err)
+			}
+			if err2 := json.Unmarshal([]byte(candidate), &fileList); err2 != nil {
+				return nil, fmt.Errorf("error parsing FileList into []FileDetail: %v", err2)
+			}
 		}
 		return fileList, nil
 	case "json":
@@ -72,4 +85,47 @@ func (sr *ServerResponse) UnmarshalFileList() (interface{}, error) {
 		// Handle unknown FileListMode by returning an error.
 		return nil, fmt.Errorf("unknown FileListMode: %s", *sr.FileListMode)
 	}
+}
+
+func extractJSONArray(input string) (string, bool) {
+	start := strings.Index(input, "[")
+	if start == -1 {
+		return "", false
+	}
+
+	depth := 0
+	inString := false
+	escaped := false
+
+	for i := start; i < len(input); i++ {
+		ch := input[i]
+
+		if inString {
+			if escaped {
+				escaped = false
+				continue
+			}
+			switch ch {
+			case '\\':
+				escaped = true
+			case '"':
+				inString = false
+			}
+			continue
+		}
+
+		switch ch {
+		case '"':
+			inString = true
+		case '[':
+			depth++
+		case ']':
+			depth--
+			if depth == 0 {
+				return input[start : i+1], true
+			}
+		}
+	}
+
+	return "", false
 }
