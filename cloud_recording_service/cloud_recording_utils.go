@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -55,10 +56,26 @@ func (sr *ServerResponse) UnmarshalFileList() (interface{}, error) {
 	}
 	switch *sr.FileListMode {
 	case "string":
-		// Parse the file list as a slice of FileDetail structures.
+		// fileList is returned as a JSON-encoded string containing an array of file details.
+		// First unmarshal to a plain string and then decode the underlying JSON payload.
+		var rawString string
+		if err := json.Unmarshal(*sr.FileList, &rawString); err != nil {
+			return nil, fmt.Errorf("error parsing FileList into string: %v", err)
+		}
+		trimmed := strings.TrimSpace(rawString)
 		var fileList []FileDetail
-		if err := json.Unmarshal(*sr.FileList, &fileList); err != nil {
-			return nil, fmt.Errorf("error parsing FileList into []FileDetail: %v", err)
+		if err := json.Unmarshal([]byte(trimmed), &fileList); err != nil {
+			// Some responses append diagnostic text after the JSON payload. Attempt to
+			// recover by extracting the portion between the first '[' and the last ']'.
+			start := strings.Index(trimmed, "[")
+			end := strings.LastIndex(trimmed, "]")
+			if start == -1 || end == -1 || end <= start {
+				return nil, fmt.Errorf("error parsing FileList into []FileDetail: %v", err)
+			}
+			candidate := trimmed[start : end+1]
+			if err2 := json.Unmarshal([]byte(candidate), &fileList); err2 != nil {
+				return nil, fmt.Errorf("error parsing FileList into []FileDetail: %v", err)
+			}
 		}
 		return fileList, nil
 	case "json":

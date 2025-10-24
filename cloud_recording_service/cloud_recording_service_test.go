@@ -200,3 +200,69 @@ func TestAddTimestamp(t *testing.T) {
 		t.Errorf("Timestamp is not recent: %v", *updatedResponse.Timestamp)
 	}
 }
+
+func TestServerResponseUnmarshalFileListStringMode(t *testing.T) {
+	mode := "string"
+	fileListString := `[{"filename":"test.mp4","sliceStartTime":1700000000}]`
+	fileListBytes, err := json.Marshal(fileListString)
+	if err != nil {
+		t.Fatalf("failed to marshal file list string: %v", err)
+	}
+	raw := json.RawMessage(fileListBytes)
+
+	sr := ServerResponse{
+		FileListMode: &mode,
+		FileList:     &raw,
+	}
+
+	result, err := sr.UnmarshalFileList()
+	if err != nil {
+		t.Fatalf("UnmarshalFileList returned error: %v", err)
+	}
+
+	fileList, ok := result.([]FileDetail)
+	if !ok {
+		t.Fatalf("expected []FileDetail, got %T", result)
+	}
+
+	if len(fileList) != 1 {
+		t.Fatalf("expected 1 file detail, got %d", len(fileList))
+	}
+
+	if fileList[0].Filename != "test.mp4" {
+		t.Errorf("expected filename 'test.mp4', got %s", fileList[0].Filename)
+	}
+}
+
+func TestServerResponseUnmarshalFileListStringModeWithTrailingData(t *testing.T) {
+	mode := "string"
+	rawString := `[{"filename":"test.mp4","sliceStartTime":1700000000}]additional text`
+	fileListBytes, err := json.Marshal(rawString)
+	if err != nil {
+		t.Fatalf("failed to marshal file list string: %v", err)
+	}
+	raw := json.RawMessage(fileListBytes)
+
+	sr := ServerResponse{
+		FileListMode: &mode,
+		FileList:     &raw,
+	}
+
+	result, err := sr.UnmarshalFileList()
+	if err != nil {
+		t.Fatalf("UnmarshalFileList returned error: %v", err)
+	}
+
+	fileList, ok := result.([]FileDetail)
+	if !ok {
+		t.Fatalf("expected []FileDetail, got %T", result)
+	}
+
+	if len(fileList) != 1 {
+		t.Fatalf("expected 1 file detail, got %d", len(fileList))
+	}
+
+	if fileList[0].Filename != "test.mp4" {
+		t.Errorf("expected filename 'test.mp4', got %s", fileList[0].Filename)
+	}
+}
